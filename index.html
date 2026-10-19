@@ -1,0 +1,467 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>ER Workflow Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: แถบหัว + ตัวกรอง แล้วกระดาน 4 คอลัมน์ตามสถานะ (มือถือ = เลื่อนแนวนอนในกระดาน) */
+:root {
+  --bg: #F0F4F9;
+  --panel: #FFFFFF;
+  --line: #DADCE0;
+  --line-soft: #E8EAED;
+  --ink: #1F2937;
+  --ink-2: #4B5563;
+  --ink-3: #6B7280;
+  --navy: #1A3A8B;
+  --navy-soft: #E8F0FE;
+  --doc: #1A3A8B;
+  --doc-soft: #E8F0FE;
+  --nurse: #0F766E;
+  --nurse-soft: #E1F3F1;
+  --done: #1E9E5A;
+  --danger: #C5221F;
+  --danger-soft: #FCE8E6;
+  --f-body: "IBM Plex Sans Thai", "Noto Sans Thai", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1420; --panel: #171E2D; --line: #2C3547; --line-soft: #232B3B;
+    --ink: #E8ECF3; --ink-2: #B8C0CF; --ink-3: #8C96A8;
+    --navy: #8AB4F8; --navy-soft: #1E2A44;
+    --doc: #8AB4F8; --doc-soft: #1E2A44; --nurse: #5EC9BC; --nurse-soft: #15302D;
+    --done: #57C08A; --danger: #F28B82; --danger-soft: #3A1E1D;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1420; --panel: #171E2D; --line: #2C3547; --line-soft: #232B3B;
+  --ink: #E8ECF3; --ink-2: #B8C0CF; --ink-3: #8C96A8;
+  --navy: #8AB4F8; --navy-soft: #1E2A44;
+  --doc: #8AB4F8; --doc-soft: #1E2A44; --nurse: #5EC9BC; --nurse-soft: #15302D;
+  --done: #57C08A; --danger: #F28B82; --danger-soft: #3A1E1D;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body);
+  font-weight: 500; font-size: 14px; line-height: 1.5;
+  padding-inline: 16px; padding-block: 20px 28px;
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+h1 { margin: 0; font-size: 22px; font-weight: 700; text-wrap: balance; }
+.sub { margin: 2px 0 0; color: var(--ink-3); font-size: 13px; }
+.stats { display: flex; gap: 14px; color: var(--ink-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+.stats b { color: var(--ink); font-weight: 700; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip {
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink-2);
+  border-radius: 100px; padding: 6px 14px; font: inherit; font-weight: 600; cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--navy-soft); color: var(--navy); border-color: transparent; }
+.chip:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--navy); outline-offset: 2px;
+}
+.spacer { flex: 1; }
+.btn {
+  border: 0; border-radius: 100px; padding: 8px 16px; font: inherit; font-weight: 600; cursor: pointer;
+  background: var(--navy); color: var(--panel);
+}
+.btn.ghost { background: var(--panel); color: var(--ink-2); border: 1px solid var(--line); }
+.btn.danger { background: var(--danger-soft); color: var(--danger); }
+.board { display: grid; grid-template-columns: repeat(4, minmax(240px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+.col {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  display: flex; flex-direction: column; min-height: 240px; min-width: 0;
+}
+.col-head { display: flex; align-items: center; gap: 8px; padding: 14px 14px 10px; }
+.col-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.count { font-family: var(--f-mono); font-size: 12px; color: var(--ink-3); background: var(--bg); border-radius: 100px; padding: 1px 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+.col[data-s="doing"] .dot { background: var(--navy); }
+.col[data-s="review"] .dot { background: #E37400; }
+.col[data-s="done"] .dot { background: var(--done); }
+.list { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 4px 10px 12px; min-height: 80px; border-radius: 12px; }
+.list.over { background: var(--navy-soft); }
+.card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px; cursor: grab; min-width: 0;
+}
+.card:hover { border-color: var(--ink-3); }
+.card.dragging { opacity: .45; }
+.card .t { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; white-space: pre-line; }
+.done .card .t { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tag { font-size: 11.5px; font-weight: 700; border-radius: 6px; padding: 1px 7px; }
+.tag.doctor { background: var(--doc-soft); color: var(--doc); }
+.tag.nurse { background: var(--nurse-soft); color: var(--nurse); }
+.area { font-size: 12px; color: var(--ink-3); }
+.from { font-size: 11.5px; font-weight: 600; color: var(--ink-2); border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; }
+.proof { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.proof figure { margin: 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.proof img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; border: 1px solid var(--line-soft); background: var(--bg); display: block; }
+.proof figcaption { font-size: 11px; color: var(--ink-3); font-weight: 600; }
+.badge-proof { font-size: 11px; font-weight: 700; color: var(--done); }
+.slots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.slot { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.slot .head { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--ink-3); font-weight: 600; }
+.slot .pic { aspect-ratio: 4 / 3; border-radius: 10px; background: var(--bg); border: 1px dashed var(--line); display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--ink-3); font-size: 12.5px; text-align: center; padding: 6px; }
+.slot .pic img { width: 100%; height: 100%; object-fit: contain; }
+.slot .pic.has { border-style: solid; padding: 0; }
+.mini { border: 0; background: none; color: var(--navy); font: inherit; font-weight: 600; font-size: 12.5px; cursor: pointer; padding: 2px 4px; }
+.mini.del { color: var(--danger); }
+.cmp { position: fixed; inset: 0; background: #0B1220; z-index: 30; display: flex; flex-direction: column; color: #E8ECF3; }
+.cmp-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 16px; }
+.cmp-top h3 { margin: 0; font-size: 15px; font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.seg { display: flex; background: #1B2436; border-radius: 100px; padding: 3px; }
+.seg button { border: 0; background: none; color: #B8C0CF; font: inherit; font-weight: 600; padding: 6px 12px; border-radius: 100px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: #E8F0FE; color: #1A3A8B; }
+.cmp-x { border: 0; background: #1B2436; color: #E8ECF3; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+.cmp-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0 16px 8px; }
+.cmp-slide { position: relative; max-width: 100%; max-height: 100%; user-select: none; touch-action: none; }
+.cmp-slide img { display: block; max-width: 100%; max-height: calc(100vh - 150px); border-radius: 8px; }
+.cmp-slide .top { position: absolute; inset: 0; overflow: hidden; border-radius: 8px; }
+.cmp-slide .top img { max-width: none; max-height: none; height: 100%; width: auto; }
+.cmp-handle { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; transform: translateX(-1px); pointer-events: none; }
+.cmp-handle::after { content: "⟷"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #1A3A8B; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.cmp-tag { position: absolute; top: 10px; padding: 3px 10px; border-radius: 100px; font-size: 12.5px; font-weight: 700; background: rgba(11,18,32,.75); color: #fff; pointer-events: none; }
+.cmp-side { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-height: 100%; }
+.cmp-side figure { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cmp-side img { width: 100%; max-height: calc(100vh - 170px); object-fit: contain; border-radius: 8px; background: #000; }
+.cmp-side figcaption { font-weight: 700; font-size: 13px; }
+.cmp-hint { text-align: center; font-size: 12.5px; color: #8C96A8; padding: 0 16px 14px; }
+.cmp-btn { border: 0; border-radius: 100px; padding: 6px 12px; font: inherit; font-weight: 700; font-size: 12px; cursor: pointer; background: var(--navy); color: var(--panel); }
+@media (max-width: 720px) { .cmp-side { grid-template-columns: 1fr; overflow: auto; } }
+.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 20; cursor: zoom-out; }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+.empty { color: var(--ink-3); font-size: 13px; padding: 10px 6px; text-align: center; }
+.loading { color: var(--ink-3); padding: 24px; text-align: center; }
+/* แผ่นแก้ไข/เพิ่มการ์ด */
+.sheet-bg { position: fixed; inset: 0; background: rgba(11,27,63,.32); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+.sheet { background: var(--panel); border-radius: 20px; width: min(520px, 100%); padding: 20px; display: flex; flex-direction: column; gap: 12px; max-height: 90vh; overflow: auto; }
+.sheet h3 { margin: 0; font-size: 17px; font-weight: 700; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--ink-3); font-weight: 600; }
+input, select, textarea {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid transparent;
+  border-radius: 10px; padding: 9px 11px; font-weight: 500;
+}
+textarea { min-height: 72px; resize: vertical; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.actions .left { margin-right: auto; }
+.note { color: var(--ink-3); font-size: 12.5px; }
+.ro { color: var(--ink-3); font-size: 13px; }
+@media (max-width: 720px) {
+  .board { grid-template-columns: repeat(4, 82%); scroll-snap-type: x mandatory; }
+  .col { scroll-snap-align: start; }
+  .row2 { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>ER Workflow Board</h1>
+      <p class="sub">รายการปรับเมนู workflow แพทย์และพยาบาล จากรีวิว 19 ต.ค. 2569 · แตะการ์ดเพื่อดูภาพก่อน/หลังแก้ (ฉบับอ่านอย่างเดียว)</p>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="bar">
+    <button class="chip" data-f="all" aria-pressed="true">ทั้งหมด</button>
+    <button class="chip" data-f="doctor" aria-pressed="false">แพทย์</button>
+    <button class="chip" data-f="nurse" aria-pressed="false">พยาบาล</button>
+    <select id="areaFilter" class="chip" aria-label="กรองตามส่วน"><option value="">ทุกส่วน</option></select>
+    <span class="spacer"></span>
+    <button class="btn" id="addBtn">+ เพิ่มงาน</button>
+  </div>
+
+  <div class="board" id="board">
+    <section class="col" data-s="todo"><div class="col-head"><span class="dot"></span><h2>ต้องทำ</h2><span class="count"></span></div><div class="list"></div></section>
+    <section class="col" data-s="doing"><div class="col-head"><span class="dot"></span><h2>กำลังทำ</h2><span class="count"></span></div><div class="list"></div></section>
+    <section class="col" data-s="review"><div class="col-head"><span class="dot"></span><h2>รอรีวิว</h2><span class="count"></span></div><div class="list"></div></section>
+    <section class="col done" data-s="done"><div class="col-head"><span class="dot"></span><h2>เสร็จแล้ว</h2><span class="count"></span></div><div class="list"></div></section>
+  </div>
+  <p class="note" id="note">กำลังโหลดรายการ…</p>
+</div>
+
+<div class="sheet-bg" id="sheetBg" hidden>
+  <form class="sheet" id="sheet">
+    <h3 id="sheetTitle">แก้ไขงาน</h3>
+    <label for="fTitle">งาน<textarea id="fTitle" required></textarea></label>
+    <div class="row2">
+      <label for="fGroup">ฝั่ง<select id="fGroup"><option value="doctor">แพทย์</option><option value="nurse">พยาบาล</option></select></label>
+      <label for="fStatus">สถานะ<select id="fStatus"><option value="todo">ต้องทำ</option><option value="doing">กำลังทำ</option><option value="review">รอรีวิว</option><option value="done">เสร็จแล้ว</option></select></label>
+    </div>
+    <label for="fArea">ส่วน<input id="fArea" list="areaList" placeholder="เช่น วาดภาพ, หัตถการ"></label>
+    <datalist id="areaList"></datalist>
+    <label for="fNote">หมายเหตุ<textarea id="fNote"></textarea></label>
+    <button type="button" class="cmp-btn" id="cmpOpen" hidden>เทียบก่อน/หลัง</button>
+    <div class="slots" id="slots">
+      <div class="slot" data-k="beforeId"><div class="head"><span>ภาพก่อนแก้</span><span class="ctl"></span></div><div class="pic"></div></div>
+      <div class="slot" data-k="afterId"><div class="head"><span>ภาพหลังแก้</span><span class="ctl"></span></div><div class="pic"></div></div>
+    </div>
+    <input type="file" id="fileIn" accept="image/*" hidden>
+    <div class="actions">
+      <button type="button" class="btn danger left" id="delBtn">ลบ</button>
+      <button type="button" class="btn danger left" id="delYes" hidden>ยืนยันลบ</button>
+      <button type="button" class="btn ghost" id="cancelBtn">ยกเลิก</button>
+      <button type="submit" class="btn" id="saveBtn">บันทึก</button>
+    </div>
+  </form>
+</div>
+
+<div class="lightbox" id="lightbox" hidden onclick="this.hidden=true"><img alt="ภาพหลักฐาน"></div>
+
+<div class="cmp" id="cmp" hidden>
+  <div class="cmp-top">
+    <h3 id="cmpTitle"></h3>
+    <div class="seg" role="group" aria-label="วิธีเทียบ">
+      <button type="button" data-m="slide" aria-pressed="true">เลื่อนเทียบ</button>
+      <button type="button" data-m="side" aria-pressed="false">คู่กัน</button>
+      <button type="button" data-m="flip" aria-pressed="false">สลับ</button>
+    </div>
+    <button type="button" class="cmp-x" id="cmpClose" aria-label="ปิด">✕</button>
+  </div>
+  <div class="cmp-stage" id="cmpStage"></div>
+  <div class="cmp-hint" id="cmpHint"></div>
+</div>
+
+<script>
+const STATUS = ['todo', 'doing', 'review', 'done'];
+let cards = [];          // {id, title, group, area, status, order, note}
+let filter = 'all', areaF = '';
+let db = null, col = null, canWrite = false, assets = null;
+let editing = null;      // id ที่กำลังแก้ · 'new' = เพิ่มใหม่
+
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const blob = (id) => 'img/' + encodeURIComponent(id) + '.jpg';
+const pic = (id, cap) => id ? `<figure><img src="${blob(id)}" alt="${cap}" loading="lazy"><figcaption>${cap}</figcaption></figure>` : `<figure><div></div></figure>`;
+
+function render() {
+  const shown = cards.filter(c => (filter === 'all' || c.group === filter) && (!areaF || c.area === areaF));
+  for (const s of STATUS) {
+    const colEl = document.querySelector(`.col[data-s="${s}"]`);
+    const list = colEl.querySelector('.list');
+    const items = shown.filter(c => c.status === s).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    colEl.querySelector('.count').textContent = items.length;
+    list.innerHTML = items.length ? items.map(c => `
+      <article class="card" draggable="${canWrite}" data-id="${esc(c.id)}" tabindex="0">
+        <div class="t">${esc(c.title)}</div>
+        <div class="meta">
+          <span class="tag ${c.group === 'nurse' ? 'nurse' : 'doctor'}">${c.group === 'nurse' ? 'พยาบาล' : 'แพทย์'}</span>
+          ${c.area ? `<span class="area">${esc(c.area)}</span>` : ''}
+          ${c.from ? `<span class="from">${esc(c.from)}</span>` : ''}
+          ${c.beforeId && c.afterId ? '<span class="badge-proof">มีหลักฐานก่อน/หลัง</span>' : ''}
+        </div>
+        ${c.beforeId || c.afterId ? `<div class="proof" data-cmp="${esc(c.id)}">
+          ${pic(c.beforeId, 'ก่อน')}${pic(c.afterId, 'หลัง')}
+        </div>` : ''}
+        ${c.beforeId && c.afterId ? `<div><button type="button" class="cmp-btn" data-cmp="${esc(c.id)}">เทียบก่อน/หลัง</button></div>` : ''}
+      </article>`).join('') : '<div class="empty">ไม่มีงาน</div>';
+  }
+  const total = cards.length, done = cards.filter(c => c.status === 'done').length;
+  $('#stats').innerHTML = `<span>ทั้งหมด <b>${total}</b></span><span>เสร็จ <b>${done}</b></span><span>เหลือ <b>${total - done}</b></span>`;
+  const areas = [...new Set(cards.map(c => c.area).filter(Boolean))];
+  const sel = $('#areaFilter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">ทุกส่วน</option>' + areas.map(a => `<option ${a === cur ? 'selected' : ''}>${esc(a)}</option>`).join('');
+  $('#areaList').innerHTML = areas.map(a => `<option value="${esc(a)}">`).join('');
+  $('#addBtn').hidden = !canWrite;
+}
+
+// ---- ลากการ์ด (เดสก์ท็อป) · มือถือใช้แตะแล้วเปลี่ยนสถานะในแผ่นแก้ไข
+let dragId = null;
+document.addEventListener('dragstart', e => {
+  const c = e.target.closest?.('.card'); if (!c) return;
+  dragId = c.dataset.id; c.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', dragId); } catch (_) {}
+});
+document.addEventListener('dragend', e => { e.target.closest?.('.card')?.classList.remove('dragging'); document.querySelectorAll('.list.over').forEach(l => l.classList.remove('over')); });
+document.querySelectorAll('.list').forEach(list => {
+  list.addEventListener('dragover', e => { if (!dragId) return; e.preventDefault(); list.classList.add('over'); });
+  list.addEventListener('dragleave', () => list.classList.remove('over'));
+  list.addEventListener('drop', e => {
+    e.preventDefault(); list.classList.remove('over');
+    const s = list.closest('.col').dataset.s;
+    const c = cards.find(x => x.id === dragId); dragId = null;
+    if (!c || c.status === s) return;
+    // วางท้ายคอลัมน์ตามตำแหน่งที่ปล่อย
+    const after = [...list.querySelectorAll('.card')].filter(el => el.getBoundingClientRect().top + el.offsetHeight / 2 < e.clientY);
+    const peers = cards.filter(x => x.status === s).sort((a, b) => a.order - b.order);
+    const prev = after.length ? cards.find(x => x.id === after[after.length - 1].dataset.id) : null;
+    const next = peers[prev ? peers.indexOf(prev) + 1 : 0];
+    const order = prev && next ? (prev.order + next.order) / 2 : prev ? prev.order + 1 : next ? next.order - 1 : 0;
+    save(c.id, { status: s, order });
+  });
+});
+
+document.addEventListener('click', e => {
+  const c = e.target.closest('.card'); if (c) openSheet(c.dataset.id);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.classList?.contains('card')) openSheet(e.target.dataset.id);
+  if (e.key === 'Escape') closeSheet();
+});
+document.querySelectorAll('.chip[data-f]').forEach(b => b.addEventListener('click', () => {
+  filter = b.dataset.f;
+  document.querySelectorAll('.chip[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  render();
+}));
+$('#areaFilter').addEventListener('change', e => { areaF = e.target.value; render(); });
+
+// ---- แผ่นแก้ไข
+function openSheet(id) {
+  editing = id;
+  const c = id === 'new' ? { title: '', group: filter === 'nurse' ? 'nurse' : 'doctor', area: areaF, status: 'todo', note: '' } : cards.find(x => x.id === id);
+  if (!c) return;
+  $('#sheetTitle').textContent = id === 'new' ? 'เพิ่มงาน' : (canWrite ? 'แก้ไขงาน' : 'รายละเอียดงาน');
+  $('#fTitle').value = c.title; $('#fGroup').value = c.group; $('#fStatus').value = c.status;
+  $('#fArea').value = c.area || ''; $('#fNote').value = c.note || '';
+  ['#fTitle', '#fGroup', '#fStatus', '#fArea', '#fNote'].forEach(s => $(s).disabled = !canWrite);
+  $('#delBtn').hidden = id === 'new' || !canWrite; $('#delYes').hidden = true;
+  $('#saveBtn').hidden = !canWrite;
+  renderSlots(id === 'new' ? null : c);
+  $('#sheetBg').hidden = false;
+  setTimeout(() => $('#fTitle').focus(), 0);
+}
+// ช่องภาพก่อน/หลัง: แตะภาพ = ดูเต็มจอ · ผู้แก้ไขอัปโหลด/เปลี่ยน/เอาออกได้
+function renderSlots(c) {
+  $('#slots').hidden = !c;
+  $('#cmpOpen').hidden = !(c && c.beforeId && c.afterId);
+  if (!c) return;
+  document.querySelectorAll('.slot').forEach(sl => {
+    const k = sl.dataset.k, id = c[k];
+    const box = sl.querySelector('.pic');
+    box.className = 'pic' + (id ? ' has' : '');
+    box.innerHTML = id ? `<img src="${blob(id)}" alt="">` : (assets ? 'ยังไม่มีภาพ' : 'ยังไม่มีภาพ');
+    const ctl = sl.querySelector('.ctl');
+    ctl.innerHTML = assets
+      ? `<button type="button" class="mini" data-up="${k}">${id ? 'เปลี่ยน' : 'อัปโหลด'}</button>` + (id ? `<button type="button" class="mini del" data-rm="${k}">เอาออก</button>` : '')
+      : '';
+  });
+}
+// ---- เทียบก่อน/หลัง: เลื่อนเส้นแบ่ง · คู่กัน · สลับ (แตะ/Space สลับภาพในตำแหน่งเดียวกัน)
+let cmpCard = null, cmpMode = 'slide', cmpPos = 50, cmpShowAfter = true;
+function openCmp(id) {
+  cmpCard = cards.find(x => x.id === id);
+  if (!cmpCard || !cmpCard.beforeId || !cmpCard.afterId) return;
+  $('#cmpTitle').textContent = cmpCard.title;
+  cmpPos = 50; cmpShowAfter = true;
+  $('#cmp').hidden = false;
+  drawCmp();
+}
+function closeCmp() { $('#cmp').hidden = true; cmpCard = null; }
+function drawCmp() {
+  const c = cmpCard; if (!c) return;
+  const b = blob(c.beforeId), a = blob(c.afterId);
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.m === cmpMode)));
+  const st = $('#cmpStage');
+  if (cmpMode === 'side') {
+    st.innerHTML = `<div class="cmp-side"><figure><figcaption>ก่อนแก้</figcaption><img src="${b}" alt="ก่อนแก้"></figure><figure><figcaption>หลังแก้</figcaption><img src="${a}" alt="หลังแก้"></figure></div>`;
+    $('#cmpHint').textContent = 'ภาพก่อนซ้าย หลังขวา';
+  } else if (cmpMode === 'flip') {
+    st.innerHTML = `<div class="cmp-slide" id="flipBox"><img src="${cmpShowAfter ? a : b}" alt=""><span class="cmp-tag" style="left:10px">${cmpShowAfter ? 'หลังแก้' : 'ก่อนแก้'}</span></div>`;
+    $('#cmpHint').textContent = 'แตะภาพหรือกด Space เพื่อสลับ ก่อน ↔ หลัง ในตำแหน่งเดียวกัน';
+    $('#flipBox').onclick = () => { cmpShowAfter = !cmpShowAfter; drawCmp(); };
+  } else {
+    // ภาพหลังอยู่ล่าง ภาพก่อนอยู่บน ตัดตามเส้นแบ่ง
+    st.innerHTML = `<div class="cmp-slide" id="slideBox"><img src="${a}" alt="หลังแก้" id="slBase"><div class="top" id="slTop"><img src="${b}" alt="ก่อนแก้"></div><div class="cmp-handle" id="slHandle"></div><span class="cmp-tag" style="left:10px">ก่อน</span><span class="cmp-tag" style="right:10px">หลัง</span></div>`;
+    $('#cmpHint').textContent = 'ลากบนภาพ หรือกด ← → เพื่อเลื่อนเส้นแบ่ง';
+    const box = $('#slideBox'), base = $('#slBase');
+    const place = () => {
+      const w = base.clientWidth, h = base.clientHeight;
+      $('#slTop').style.width = (cmpPos / 100 * w) + 'px';
+      $('#slTop').querySelector('img').style.height = h + 'px';
+      $('#slTop').querySelector('img').style.width = w + 'px';
+      $('#slHandle').style.left = (cmpPos / 100 * w) + 'px';
+    };
+    base.onload = place; place();
+    let down = false;
+    const move = (e) => {
+      const r = box.getBoundingClientRect();
+      cmpPos = Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100));
+      place();
+    };
+    box.onpointerdown = (e) => { down = true; box.setPointerCapture(e.pointerId); move(e); };
+    box.onpointermove = (e) => { if (down) move(e); };
+    box.onpointerup = () => { down = false; };
+    window.onresize = place;
+  }
+}
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => { cmpMode = b.dataset.m; drawCmp(); }));
+$('#cmpClose').addEventListener('click', closeCmp);
+$('#cmpOpen').addEventListener('click', () => { const id = editing; closeSheet(); openCmp(id); });
+document.addEventListener('keydown', e => {
+  if ($('#cmp').hidden) return;
+  if (e.key === 'Escape') closeCmp();
+  if (cmpMode === 'slide' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { cmpPos = Math.max(0, Math.min(100, cmpPos + (e.key === 'ArrowLeft' ? -5 : 5))); drawCmp(); }
+  if (cmpMode === 'flip' && e.key === ' ') { e.preventDefault(); cmpShowAfter = !cmpShowAfter; drawCmp(); }
+});
+
+let upKey = null;
+document.addEventListener('click', e => {
+  const up = e.target.closest('[data-up]');
+  if (up) { upKey = up.dataset.up; $('#fileIn').value = ''; $('#fileIn').click(); return; }
+  const rm = e.target.closest('[data-rm]');
+  if (rm && editing) { save(editing, { [rm.dataset.rm]: null }).then(() => renderSlots(cards.find(x => x.id === editing))); return; }
+  const cb = e.target.closest('[data-cmp]');
+  if (cb) { const cc = cards.find(x => x.id === cb.dataset.cmp); if (cc && cc.beforeId && cc.afterId) { e.stopPropagation(); openCmp(cb.dataset.cmp); return; } }
+  const im = e.target.closest('.pic.has img, .proof img');
+  if (im) { e.stopPropagation(); const lb = $('#lightbox'); lb.querySelector('img').src = im.src; lb.hidden = false; }
+}, true);
+$('#fileIn').addEventListener('change', async e => {
+  const f = e.target.files[0]; const id = editing, k = upKey;
+  if (!f || !id || id === 'new') return;
+  try {
+    note('กำลังอัปโหลดภาพ…');
+    const r = await assets.upload(f);
+    await save(id, { [k]: r.id });
+    renderSlots(cards.find(x => x.id === id));
+    note('อัปโหลดภาพแล้ว');
+  } catch (err) { note('อัปโหลดไม่สำเร็จ: ' + (err.message || err.code)); }
+});
+
+function closeSheet() { $('#sheetBg').hidden = true; editing = null; }
+$('#cancelBtn').addEventListener('click', closeSheet);
+$('#sheetBg').addEventListener('click', e => { if (e.target.id === 'sheetBg') closeSheet(); });
+$('#addBtn').addEventListener('click', () => openSheet('new'));
+$('#delBtn').addEventListener('click', () => { $('#delBtn').hidden = true; $('#delYes').hidden = false; });
+$('#delYes').addEventListener('click', async () => {
+  const id = editing; closeSheet();
+  try { await col.doc(id).delete(); } catch (err) { note('ลบไม่สำเร็จ: ' + (err.message || err.code)); }
+});
+$('#sheet').addEventListener('submit', async e => {
+  e.preventDefault();
+  const data = {
+    title: $('#fTitle').value.trim(), group: $('#fGroup').value, status: $('#fStatus').value,
+    area: $('#fArea').value.trim(), note: $('#fNote').value.trim(),
+  };
+  if (!data.title) return;
+  const id = editing; closeSheet();
+  if (id === 'new') {
+    const peers = cards.filter(x => x.status === data.status);
+    data.order = peers.length ? Math.max(...peers.map(x => x.order ?? 0)) + 1 : 0;
+    try { await col.add(data); } catch (err) { note('เพิ่มไม่สำเร็จ: ' + (err.message || err.code)); }
+  } else save(id, data);
+});
+
+async function save(id, patch) {
+  const c = cards.find(x => x.id === id); if (!c) return;
+  Object.assign(c, patch); render();               // แสดงทันที แล้วค่อยบันทึก
+  try { await col.doc(id).update(patch); } catch (err) { note('บันทึกไม่สำเร็จ: ' + (err.message || err.code)); }
+}
+function note(t) { $('#note').textContent = t; }
+
+// ฉบับอ่านอย่างเดียว (GitHub Pages): ข้อมูล snapshot จาก board บน claude.ai
+cards = [{"afterId": "5e33c7a28e2284c2e9dffc09a4377da1", "area": "วาดภาพ", "beforeId": "647ff66665418dedb199876b6aea5df8", "group": "doctor", "note": "pe_templates.dart: _peStamp \"19 ต.ค. 69 15:19 น.\" · รายการของตัวเองมีปุ่ม แก้ไข/ลบ (ลบถามก่อน) · รูปลบได้เฉพาะของตัวเอง · footer เหลือบันทึก · ป้าย PE มีรูปประกอบล่าสุด 24px", "order": -21, "status": "done", "title": "วาดภาพ: รายละเอียดมีวันที่ ล่าสุดก่อน · แก้/ลบของตัวเอง · เอาลบบริเวณออก · ป้ายหมุดมีรูปเล็ก", "id": "d37"}, {"area": "เมนูซ้าย", "group": "doctor", "order": 21, "status": "todo", "title": "เมนูซ้าย: ตรวจร่างกายอยู่บน Lab/X-ray", "id": "d21"}, {"afterId": "97894bb15f64fb8671fddd5c4374287d", "area": "เมนูขวา", "beforeId": "e7f23b8b101e9a5f0352f878ae4753d3", "group": "doctor", "note": "เอาช่องอุบัติเหตุออกจากรางขวาของแพทย์ (workflow_rail.dart) ข้อมูลอุบัติเหตุยังดูได้ในแท็บของผู้ป่วยตามเดิม", "order": 0, "status": "done", "title": "เมนูขวา: เอาขั้นอุบัติเหตุออก", "id": "d01"}, {"area": "หัตถการ", "group": "doctor", "order": 17, "status": "todo", "title": "หัตถการ: ขั้นแรกใช้คำว่า \"บันทึกหัตถการ\"", "id": "d17"}, {"afterId": "fc5b843e16342dfe0c78fbb4750742db", "area": "ส่งตรวจ", "beforeId": "673281e36da35a16a233c36321ee8d97", "group": "nurse", "note": "triage_page.dart, register_page.dart", "order": -6, "status": "done", "title": "สรุปก่อนส่งตรวจ: แพทย์เวรบอกบทบาทชัด (แพทย์หลัก/แพทย์ร่วม + ตั้งเป็นแพทย์หลัก) · เปลี่ยนระดับเองอยู่บนสุด", "id": "n11"}, {"area": "รับเข้า ER", "group": "nurse", "order": 32, "status": "todo", "title": "ข้อมูลการรับเข้า ER ขั้นแรก: พยาบาลยืนยันข้อมูลที่มาจากส่งตรวจอีกครั้ง", "id": "n07"}, {"area": "รับเข้า ER", "group": "nurse", "order": 31, "status": "todo", "title": "คัดกรอง: ตัดหน้ายืนยันแพ้ยาออก", "id": "n06"}, {"afterId": "2ed822208bdefca08b5acc13a064d055", "area": "ส่งตรวจ", "beforeId": "182ae0889cc3100291746e1acf7552f9", "group": "nurse", "note": "register_page.dart, triage_page.dart: เส้นขอบการ์ด/ปุ่มตัวเลือกที่ไม่ได้เลือก 1.0 → 0.5 · ตัวที่เลือกอยู่คงเส้นหนาตามเดิม", "order": -3, "status": "done", "title": "คัดกรอง/ส่งตรวจ: เส้นขอบการ์ดทุกใบบางเท่าหน้ารายละเอียดคนไข้ (0.5)", "id": "n10"}, {"area": "วาดภาพ", "group": "doctor", "order": 16, "status": "todo", "title": "วาดภาพ: กดออกโดยไม่บันทึก → เปลี่ยนเป็นถามยืนยันการบันทึก", "id": "d16"}, {"afterId": "9777ece254f07971fc4102d4811cd73a", "area": "เมนูซ้าย", "beforeId": "e5dc923dc8f0589249ab5387c83dfb70", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569\nทำแล้ว: overview_panel.dart แสดงชื่อ 'ข้อมูลซักประวัติ' (key แท็บคงเดิม)", "order": -22, "status": "done", "title": "ภาพรวม = แก้ไข caption เดิมตรงเมนูเป็นคำว่า 'ภาพรวม' ให้แก้ไขเป็น 'ข้อมูลซักประวัติ' **ภาพที่ 1", "id": "r01"}, {"area": "เมนูซ้าย", "group": "doctor", "order": 20, "status": "todo", "title": "เมนูซ้าย: คำสั่งแพทย์ขึ้นก่อนกิจกรรมพยาบาล", "id": "d20"}, {"afterId": "a22f9aad1603dee6232dc60169a12cf1", "area": "วาดภาพ", "beforeId": "3d3eaf88576ad26df553cb237ce02b54", "group": "doctor", "note": "pe_templates.dart (_studioBody SafeArea bottom: false) · ปุ่มลอยเว้นระยะ safe area เอง", "order": -20, "status": "done", "title": "วาดภาพ: แผงขวาสูงถึงขอบล่างจอ", "id": "d36"}, {"area": "เมนูซ้าย", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 42, "status": "todo", "title": "ยา  = เปลี่ยน Caption ยา/ค่าใช้จ่าย >> ปลาเพิ่ม เมนูด้านในแสดงสรุปรายการค่าใช้จ่ายที่เกิดขึ้นในวันนี้", "id": "r06"}, {"afterId": "5d922b8350784e9e8b855cb350764a46", "area": "วาดภาพ", "beforeId": "e01878c8d4fdd271af552642fbab00d0", "group": "doctor", "note": "pe_templates.dart (_usedRow): แถวบริเวณในการ์ดภาพตรวจร่างกาย (แผงขวา studio) มีภาพเล็ก 48 = รูปประกอบรูปแรก ยังไม่มีรูป = ไอคอนหมุด · ภาพก่อนแก้ = การ์ดก่อนมีแถว (ไม่ได้แคปแถวเดิมที่ไม่มีภาพ)", "order": -15, "status": "done", "title": "วาดภาพ: เพิ่มภาพเล็ก ๆ ตั้งแต่หน้าแรก", "id": "d07"}, {"area": "", "group": "nurse", "note": "", "order": 9, "status": "doing", "title": "เพิ่ม workflow panel อุบัติเหตุ", "id": "hva2ry81xrpiw041n3fy"}, {"area": "วาดภาพ", "group": "doctor", "order": 6, "status": "doing", "title": "วาดภาพ: อวัยวะภายใน แผงขวาเพิ่ม X-ray/Lab", "id": "d11"}, {"area": "เมนูขวา", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 46, "status": "todo", "title": "ซักประวัติ  = อยากให้รวมกัน\nคัดกรอง = อยากให้รวมกัน", "id": "r10"}, {"area": "เมนูขวา", "group": "nurse", "order": 26, "status": "todo", "title": "เมนูพยาบาลต้องมีขั้นเหมือนแพทย์ (พยาบาลคีย์แทนได้)", "id": "n01"}, {"afterId": "293255bafc4295902a54ad3734b6f737", "area": "วาดภาพ", "beforeId": "c0bef290151a82a3977c36edb85738e4", "group": "doctor", "note": "pe_templates.dart (_TapCoach): มือนิ่งที่หน้าอก + วงกระเพื่อมเบา ๆ วน 1.8 วิ + ป้ายสั้นใต้นิ้ว · หายเมื่อปักหมุดแรก", "order": -13, "status": "done", "title": "วาดภาพ: คำแนะนำปักหมุดเป็น animation มือแตะบนหุ่น", "id": "d31"}, {"afterId": "9cee81dcf91277b5f1eb70a58fea41a1", "area": "หน้าผู้ป่วย", "beforeId": "b1209fa4f999a589d968b903f8260829", "group": "doctor", "note": "เดิมป้ายเป็นชื่อปลายทาง (เช่น รอออก) ตอนนี้ปลายทางอยู่ใน tooltip (patient_header.dart)", "order": 2, "status": "done", "title": "ปุ่มมุมขวาบน (F9): ป้าย \"บันทึกส่งต่อ\" + ไอคอนบันทึก", "id": "d27"}, {"afterId": "aa9e1d71231dcc6919ce9c4197e6d778", "area": "การวินิจฉัย", "beforeId": "0a1f3f0d5360c714e19dc378e69005b4", "group": "doctor", "note": "สลับลำดับการ์ดในหน้าเพิ่มเติม (form_fields.dart) งานที่สั่งเพิ่มนอก list เดิม · ภาพหลังแก้แคปใหม่ (เคสสุภาพร ขั้นเพิ่มเติม)", "order": 1, "status": "done", "title": "การวินิจฉัย ขั้นเพิ่มเติม: ย้าย Doctor Note ขึ้นก่อน ICD-9-CM", "id": "d26"}, {"afterId": "89199460e57267d2f08fa98e85f9e0ee", "area": "วาดภาพ", "beforeId": "f477fbcc534bc29e9e3f99640ef55d9e", "group": "doctor", "note": "pe_templates.dart (_caseToggle): pill ขาว ชื่อ CC/Dx + สวิตช์ขนาดปกติ · ภาพหลังแก้ = ตอนเปิด", "order": -12, "status": "done", "title": "วาดภาพ: สวิตช์ CC/Dx บนหุ่นแบบ compact เน้นสวิตช์", "id": "d30"}, {"afterId": "4e26062dc22acb52ac08ceb92adfb527", "area": "เมนูขวา", "beforeId": "7dfd784afb5cd4b0398e1fbb1184db61", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569\nทำแล้ว: ตรวจร่างกายมีเมนูย่อย PE/ROS + วาดภาพ ในแผ่นเดียวกัน (workflow_rail.dart)", "order": -23, "status": "done", "title": "ตรวจร่างกาย + วาดภาพ = ปรับปรุงให้ทำการยุบรวมเมนู", "id": "r11"}, {"afterId": "f89a5f3ba5b621f3e176ec51dbfa09cd", "area": "วาดภาพ", "beforeId": "50f67d71032516dc524582eba8e1434e", "group": "doctor", "note": "pe_templates.dart: ปุ่มบนหุ่น + หัว sheet + ขั้นในหน้าแนะนำ (\"อวัยวะภายในและเทมเพลต\")", "order": -13.5, "status": "done", "title": "วาดภาพ: เปลี่ยน \"เฉพาะส่วน\" → \"เทมเพลต\"", "id": "d10"}, {"afterId": "e01878c8d4fdd271af552642fbab00d0", "area": "วาดภาพ", "beforeId": "8e118d63ac505f4b988f6846d0ea7872", "group": "doctor", "note": "pe_templates.dart: การ์ดแผงขวา + breadcrumb · หัวแถบบนสุดยังเป็น \"ตำแหน่งที่ตรวจพบ\"", "order": -10, "status": "done", "title": "วาดภาพ: title แผงขวา \"ตำแหน่งที่ตรวจพบ\" → \"ภาพตรวจร่างกาย\"", "id": "d06"}, {"area": "เมนูซ้าย", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 43, "status": "todo", "title": "ตรวจร่างกาย =  ดูแล้วไม่ปรับ (ช่วงเช้ามีแจ้งโจปรับการแสดงเมนู  PE ตามด้วย ROS )", "id": "r07"}, {"afterId": "855c565fe99d15fa7551edcc8d0d9014", "area": "ตรวจร่างกาย", "beforeId": "f519f2991b16b1ce54be7d28b104da26", "group": "doctor", "note": "pe_templates.dart, workflow_rail.dart, workflow_panel.dart · การ์ดแบบ Diagnosis Text กดเพิ่ม = หน้าย่อยพิมพ์ (breadcrumb + ย้อนกลับ|บันทึก) บันทึกแล้วแสดงเป็นแถวในการ์ด", "order": -8, "status": "done", "title": "ตรวจแบบละเอียด: ปรับ design language (ไม่มีการ์ดครอบ/หัวซ้ำ ช่องพิมพ์ขอบบาง)", "id": "d29"}, {"area": "เมนูขวา", "group": "nurse", "order": 28, "status": "todo", "title": "เพิ่มขั้น HPI ในเมนูพยาบาล", "id": "n03"}, {"area": "เมนูขวา", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 48, "status": "todo", "title": "ความรุนแรง ASI = ปรับยุบรวมการบันทึกข้อมูลหน้าเดียว", "id": "r12"}, {"afterId": "9733f76943c34549c7d5231cc57d6861", "area": "วาดภาพ", "beforeId": "e01878c8d4fdd271af552642fbab00d0", "group": "doctor", "note": "pe_templates.dart (_caseOn = false) · เปิดเองจากสวิตช์ CC/Dx บนหุ่น · การ์ดอาการของเคสในแผงขวายังแสดง", "order": -11, "status": "done", "title": "วาดภาพ: ซ่อน CC/Dx เป็นค่าเริ่มต้น", "id": "d13"}, {"afterId": "2cee93265d0d7a11310c5bd37264a990", "area": "ตรวจร่างกาย", "beforeId": "3cdaa59bf6d725165242e459310fc005", "group": "doctor", "note": "form_fields.dart (_fieldDone): ช่องตรวจร่างกายที่ว่างไม่นับเป็นช่องที่ขาด บันทึกได้เลย · ที่กรอก \"ผิดปกติ\" ยังต้องมีรายละเอียด", "order": -9, "status": "done", "title": "ตรวจร่างกาย: ไม่บังคับกรอก (ไม่มี required field)", "id": "d05"}, {"area": "เมนูซ้าย", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 40, "status": "todo", "title": "Lab / Xray > Lab = สำหรับดูผล > ** ต้องปรับเเพิ่มการดูรายการสั่งผล Lab ย้อนหลังทุก Order และ สามารถดูผล Lab รูปแบบต่าง ๆ ได้ (โจกับปลา + คุยกัน)", "id": "r04"}, {"area": "", "group": "doctor", "note": "panel ซ้ายเป็น widget kpi\nsection visualize แบ่งเป็น 2 window ฝั่งนึง visualize ฝั่งนึงรายชื่อผู้ป่วย (2 cols)", "order": 0, "status": "doing", "title": "หน้าภาพรวม", "id": "ht6lcz7io01wrudwi0lb"}, {"area": "การวินิจฉัย", "group": "doctor", "order": 25, "status": "todo", "title": "หน้าแก้ Diagnosis Text: เลือกแพทย์ผู้วินิจฉัยได้ (พยาบาลคีย์แทน)", "id": "d25"}, {"afterId": "aacbb48de59cf64a2190373cccad2aea", "area": "วาดภาพ", "beforeId": "9ba80a870bc400988dddc98fc57f91b2", "group": "doctor", "note": "pe_templates.dart: _noteLog ต่อบริเวณ เก่า→ใหม่ ช่องพิมพ์ + ปุ่ม ⊕ เพิ่มรายการ · กดบันทึกที่พิมพ์ค้าง = เพิ่มให้เอง · เก็บในภาพ (noteLogBy) เปิดกลับมาได้ · ป้ายบนหุ่นใช้รายการล่าสุด", "order": -17, "status": "done", "title": "วาดภาพ: รายละเอียดแยกตามเวลา (เวลา + ผู้บันทึก ต่อรายการ)", "id": "d33"}, {"area": "วาดภาพ", "group": "doctor", "order": 4, "status": "doing", "title": "การ์ดภาพการตรวจร่างกายฝั่งซ้าย: แสดงวันที่ด้วย (ตอนนี้มีแค่เวลา) ของแพทย์อื่นดูได้อย่างเดียว", "id": "d09"}, {"area": "เมนูซ้าย", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 44, "status": "todo", "title": "คำสั่งแพทย์ = ย้ายเมนู 'คำสั่งแพทย์'ไปไว้ด้านล่างกิจกรรม", "id": "r08"}, {"area": "เมนูซ้าย", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 45, "status": "todo", "title": "อื่น ๆ > ภาพถ่าย = ** ให้โจตัดเมนูนี้ออก", "id": "r09"}, {"afterId": "d1fa09fe8c5b0c443fcdd9a8f05e1bf7", "area": "วาดภาพ", "beforeId": "d1d618c99155742ebe7754273c5412f3", "group": "doctor", "note": "pe_templates.dart (_labels/chip): ป้ายหมุดมี badge \"PE\" (แดงอ่อน) แบบ CC/Dx + บริเวณ + รายละเอียดบรรทัดแรก · ตอน focus แสดงเฉพาะหมุดบริเวณนั้น", "order": -14, "status": "done", "title": "วาดภาพ: เพิ่ม label ที่จุด plot ที่เพิ่งวาด", "id": "d08"}, {"afterId": "6322d9e2d71ab7791090966180886a08", "area": "วาดภาพ", "beforeId": "353c7439e9152662aaad68343a7d1ffc", "group": "doctor", "note": "pe_templates.dart: หน้าแนะนำปุ่ม \"เปิดภาพตรวจร่างกาย\" เปิดภาพ 3D ล่าสุดของตัวเอง (บันทึกแทนภาพเดิม) · รูปใหม่บอกเวลา + ผู้แนบ (รูปที่แนบก่อนแก้ยังเป็นขนาด KB) · เอา \"บันทึกแล้ว x ภาพ\" ออกจากหน้าแนะนำ", "order": -16, "status": "done", "title": "วาดภาพ: กลับเข้ามาเพิ่มรูปในตำแหน่งเดิมได้ + รูปบอกเวลา/ผู้แนบ", "id": "d32"}, {"area": "การวินิจฉัย", "group": "doctor", "order": 24, "status": "todo", "title": "AI Analyze: ปุ่ม \"ลงวินิจฉัย\" → \"นำค่านี้ไปใช้\"", "id": "d24"}, {"area": "", "group": "nurse", "note": "", "order": 35, "status": "todo", "title": "รวบเมนู ซักประวัติ\n- คัดกรอง\n- AIS\nมี sub menu นี้", "id": "pwokb32om78gcixphi0a"}, {"area": "เมนูซ้าย", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 41, "status": "todo", "title": "Lab / Xray > X-Ray = สำหรับดูผล > ** ต้องปรับเเพิ่มการดูรายการสั่ง และ ผล Xray ย้อนหลังทุก Order และ สามารถดูผลที่รายงาน + ภาพฟลิ์ม + กดลิ้งดูฟลิ์มผ่าน Paces ได้ (โจกับปลา + คุยกัน)", "id": "r05"}, {"afterId": "2d79e60af8a7e9ee18eeeb7347b03b1c", "area": "ตรวจร่างกาย", "beforeId": "d5b31d9a023322fdb9d093e7d6fedfd5", "group": "doctor", "note": "workflow_panel.dart (_pePages), step_intro.dart: ผลตรวจ → ตรวจแบบละเอียด → ทบทวนระบบ → วาดภาพ · หน้าแนะนำเรียงตามกัน", "order": -4, "status": "done", "title": "ตรวจร่างกาย: เรียงขั้น PE → PE ละเอียด (free text) → ROS", "id": "d04"}, {"area": "วาดภาพ", "group": "doctor", "note": "", "order": 7, "status": "doing", "title": "วาดภาพ: เพิ่มหน้าเปล่า (กระดาษเปล่า)", "id": "d12"}, {"area": "เมนูขวา", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 49, "status": "doing", "title": "รับคำสั่งแพทย์ = โจกำลังดำเนินการ", "id": "r13"}, {"area": "ตรวจร่างกาย", "group": "nurse", "order": 27, "status": "todo", "title": "ตรวจร่างกาย/วาดภาพ: พยาบาลดูภาพที่แพทย์วาดได้อย่างเดียว ไม่ได้ใช้เอง", "id": "n02"}, {"afterId": "fa6afe51b174adca6ebeb0e1bd11bdf6", "area": "ตรวจร่างกาย", "beforeId": "9710a77f70a88acac88c54aab539e10e", "group": "doctor", "note": "workflow_panel.dart (_pePages), step_intro.dart · เหลือ ผลตรวจ → ตรวจแบบละเอียด → ทบทวนระบบ → สรุป", "order": -7, "status": "done", "title": "ตรวจร่างกาย: เอาหน้าย่อยวาดภาพออก (แยกเป็นเมนูบนรางแล้ว)", "id": "d28"}, {"area": "การวินิจฉัย", "group": "doctor", "order": 23, "status": "todo", "title": "การวินิจฉัย: ขั้น 1 \"บันทึกคำวินิจฉัยและรหัสโรค\"", "id": "d23"}, {"afterId": "3d3eaf88576ad26df553cb237ce02b54", "area": "วาดภาพ", "beforeId": "86bfd148aa0c9a0bbed9cd66d1c71332", "group": "doctor", "note": "pe_templates.dart (withSaveFooter/_saveFooter/_footBtn): ปุ่มลอยทับเนื้อหา เนื้อหาจางใต้ปุ่ม ไม่มีพื้นขาว/เส้นคั่น · ข้อความอย่างเดียว แบบ ย้อนกลับ|ถัดไป ของ workflow", "order": -19, "status": "done", "title": "วาดภาพ: footer แผงขวาแบบ workflow panel", "id": "d35"}, {"area": "เมนูซ้าย", "group": "doctor", "order": 19, "status": "todo", "title": "เมนูซ้าย: \"ข้อมูลผู้ป่วย\" → \"EMR\"", "id": "d19"}, {"area": "เมนูซ้าย", "group": "nurse", "order": 30, "status": "todo", "title": "ฝั่งซ้าย title → \"ข้อมูลคัดกรอง\"", "id": "n05"}, {"area": "เมนูขวา", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 50, "status": "todo", "title": "สังเกตอาการ+การพยาบาล  = ปัจจุบันหน้าจอเมื่อเลือกเพื่อกรอกยังไม่ใช้การบันทึกจริง ให้นำหน้าจอที่ออกแบบ observe มาใส่แทน (ปรับปรุงใหม่)\n- ให้ปรับยุบเมนู  สังเกตอาการ+การพยาบาล เป็นเมนู Observe ข้อมูลเดิมให้ตัดออก", "id": "r14"}, {"area": "วาดภาพ", "group": "doctor", "order": 8, "status": "doing", "title": "วาดภาพ: เอาปุ่มย้อน (restore) ออก", "id": "d15"}, {"afterId": "bdb46a2fd565225b55153fef1d0fea53", "area": "เมนูขวา", "beforeId": "0b57289ff9755d207485125b9afafbc2", "group": "doctor", "note": "สลับลำดับขั้นแพทย์ (step_intro.dart): HPI → ตรวจร่างกาย → วาดภาพ → สั่งการรักษา → หัตถการ → วินิจฉัย → จำหน่าย · กดถัดไป/ย้อนกลับในแผงเดินตามลำดับใหม่", "order": -2, "status": "done", "title": "เมนูขวา: ย้ายสั่งการรักษาไว้บนหัตถการ", "id": "d03"}, {"area": "เมนูซ้าย", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 38, "status": "todo", "title": "ภาพรวม - สิ่งที่ต้องเพิ่ม : การดูข้อมูลการวัด BP ซ้ำ ซึ่งปัจจุบันเหมือนจะแยกกันอยู่ โดยตอนนี้ไปอยู่ที่เมนูสัญญาณชีพ", "id": "r02"}, {"area": "", "group": "nurse", "note": "", "order": 33, "status": "todo", "title": "หน้า observe เอาฝั่งขวาไปใส่ฝั่งซ้าย\nเอาการพยาบาลออกด้วย (ขวา)", "id": "l6jtldqvymgc7gucys3x"}, {"area": "เมนูซ้าย", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569", "order": 39, "status": "todo", "title": "ข้อมูลผู้ป่วย > EMR = ต้องปรับเพิ่มเติมให้สามารถเลือกดูประวัติ EMR ตาม Visit ที่มารับบริการ", "id": "r03"}, {"afterId": "87351426f4edb34c5da63dc230a10ad8", "area": "เมนูขวา", "beforeId": "5595e536d6ce29ae8ef9324a9d27289e", "group": "doctor", "note": "เอาขั้นคัดกรองออกจากลำดับขั้นของแพทย์ (step_intro.dart) รางเริ่มที่ประวัติ HPI · เปิดเคสใหม่เริ่มที่ HPI · ฟอร์มคัดกรองยังอยู่ในโค้ด (พยาบาลใช้เป็นข้อมูลรับเข้า)", "order": -1, "status": "done", "title": "เมนูขวา: เอาขั้นคัดกรองออก", "id": "d02"}, {"area": "วาดภาพ", "group": "doctor", "order": 14, "status": "todo", "title": "เปลี่ยนชื่อหน้าวาดภาพเป็น \"วาดภาพตรวจร่างกาย\"", "id": "d14"}, {"area": "เมนูขวา", "beforeId": "0040f58468789c89c2e66407ebd8f058", "from": "from P'Aew", "group": "nurse", "note": "ตรวจสอบครั้งที่ 1 วันที่ 19/10/2569\nทำแล้ว: ตัดข้อ 3-4 (mock_data.dart) + Admit แสดง SBAR (Ward ที่รับ, S, B, A, R, งานค้าง) form_fields.dart", "order": 51, "status": "review", "title": "ออกจาก ER = มีปรับปรุง\n- สิ่งที่ตัดออก ตัวเลือก ข้อ 3 ส่งต่อข้อมูลให้ ward รพ. / ปลายทาง\n- สิ่งที่ตัดออก ตัวเลือก ข้อ ยืนยันพยาบาลผู้บันทึก\n- เงื่อนไขเพิ่มเติม : หากเลือกสภาพผู้ป่วยออกจากห้อง ER เป็น Admit ให้แสดง การบันทึกข้อมูลส่งต่อ ward ตามตัวอย่างภาพที่ 2", "id": "r15"}, {"area": "รับเข้า ER", "group": "nurse", "order": 29, "status": "todo", "title": "คัดกรอง → \"ข้อมูลการรับเข้าห้องฉุกเฉิน\"", "id": "n04"}, {"area": "", "group": "doctor", "note": "", "order": 36, "status": "todo", "title": "ย้าย GCS, Pupils ไปไว้ใน overview แถว ๆ v/s", "id": "olxv6p685s0jq2w0di2i"}, {"area": "หัตถการ", "group": "doctor", "order": 18, "status": "todo", "title": "หัตถการ: ลงได้มากกว่า 1 หัตถการ (แบบ order set เมื่อเลือกจากเทมเพลต) และเพิ่มรายการได้", "id": "d18"}, {"afterId": "f99977413a73cc11773684a033b699a4", "area": "วาดภาพ", "beforeId": "16cd37d125e94d97033a782f1c55c746", "group": "doctor", "note": "pe_templates.dart (_save): หน้าต่างยืนยัน + คำเตือน \"เมื่อบันทึกแล้วจะไม่สามารถแก้ไขได้\" · ยังต้องตัดสินใจ: ภาพที่บันทึกแล้วยังเปิดแก้/ลบได้อยู่", "order": -18, "status": "done", "title": "วาดภาพ: ถามยืนยันก่อนบันทึก", "id": "d34"}, {"area": "การวินิจฉัย", "group": "doctor", "order": 22, "status": "todo", "title": "เมนูขวา: \"วินิจฉัย\" → \"การวินิจฉัย\"", "id": "d22"}, {"afterId": "1da36a04b9e11a5cdb8761a902b3fd31", "area": "ส่งตรวจ", "beforeId": "516c9020394b92b8dd5eeb220f5ec6a6", "group": "nurse", "note": "หน้าสรุปก่อนส่งตรวจ ใต้ระดับ ESI: เลือกแพทย์เวรได้หลายคน คนแรก = หลัก (triage_page.dart) · ยังเก็บในหน้าคัดกรองอย่างเดียว ยังไม่ส่งต่อไปเคส/ไม่ได้ให้พยาบาล ER แก้ต่อ", "order": -5, "status": "done", "title": "ส่งตรวจ: เลือกแพทย์เวรได้มากกว่า 1 คน (พยาบาลคัดกรอง assign และเปลี่ยนภายหลังได้)", "id": "n08"}];
+canWrite = false;
+render();
+note('ดูได้อย่างเดียว ข้อมูล ณ 19/10/2569 17:33 น.');
+</script>
+</body></html>
